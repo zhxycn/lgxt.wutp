@@ -43,6 +43,12 @@ type CourseWork struct {
 	WorkName string
 }
 
+// Config 配置文件数据
+type Config struct {
+	Account  string `json:"account"`
+	Password string `json:"password"`
+}
+
 // Client API客户端
 type Client struct {
 	httpClient    *http.Client
@@ -287,20 +293,86 @@ func parseJSON(body []byte, key string) (interface{}, error) {
 	return value, nil
 }
 
+// loadConfig 从配置文件加载账号密码
+func loadConfig() (Config, error) {
+	var config Config
+
+	// 检查配置文件是否存在
+	if _, err := os.Stat("config.json"); os.IsNotExist(err) {
+		return config, fmt.Errorf("配置文件不存在")
+	}
+
+	// 读取配置文件
+	configFile, err := os.ReadFile("config.json")
+	if err != nil {
+		return config, fmt.Errorf("读取配置文件失败: %v", err)
+	}
+
+	// 解析 JSON
+	err = json.Unmarshal(configFile, &config)
+	if err != nil {
+		return config, fmt.Errorf("解析配置文件失败: %v", err)
+	}
+
+	return config, nil
+}
+
+// saveConfig 保存账号密码到配置文件
+func saveConfig(account, password string) error {
+	config := Config{
+		Account:  account,
+		Password: password,
+	}
+
+	// 转换为 JSON
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("生成配置文件失败: %v", err)
+	}
+
+	// 写入文件
+	err = os.WriteFile("config.json", configJSON, 0600)
+	if err != nil {
+		return fmt.Errorf("写入配置文件失败: %v", err)
+	}
+
+	return nil
+}
+
 func main() {
-	// 输入账号和密码
 	var account, password string
-	fmt.Print("账号: ")
-	fmt.Scanln(&account)
-	fmt.Print("密码: ")
-	fmt.Scanln(&password)
-	clearScreen()
+
+	// 尝试从配置文件加载账号密码
+	config, err := loadConfig()
+	if err == nil {
+		// 配置文件存在且解析成功
+		account = config.Account
+		password = config.Password
+		fmt.Println("已从配置文件加载账号信息")
+	} else {
+		// 配置文件不存在或解析失败，需要用户输入
+		fmt.Print("账号: ")
+		fmt.Scanln(&account)
+		fmt.Print("密码: ")
+		fmt.Scanln(&password)
+
+		// 清屏
+		clearScreen()
+
+		// 保存账号密码到配置文件
+		err = saveConfig(account, password)
+		if err != nil {
+			fmt.Printf("保存配置文件失败: %v\n", err)
+		} else {
+			fmt.Println("账号信息已保存到配置文件")
+		}
+	}
 
 	// 创建客户端
 	client := newClient()
 
 	// 登录
-	err := client.login(account, password)
+	err = client.login(account, password)
 	if err != nil {
 		fmt.Printf("登录失败: %v\n", err)
 		return
