@@ -12,7 +12,6 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
-	"time"
 )
 
 // API 端点
@@ -420,6 +419,7 @@ func main() {
 	for _, work := range works {
 		fmt.Printf("%s [%d]\n", work.WorkName, work.WorkID)
 	}
+	fmt.Println("\n返回课程列表 [0]")
 
 	// 选择作业
 	fmt.Print("\n请输入作业ID: ")
@@ -427,6 +427,14 @@ func main() {
 	_, err = fmt.Scanln(&selectedWorkID)
 	if err != nil {
 		fmt.Printf("输入错误: %v\n", err)
+		return
+	}
+
+	// 输入0返回课程列表
+	if selectedWorkID == -1 {
+		// 清屏
+		clearScreen()
+		main()
 		return
 	}
 
@@ -439,11 +447,17 @@ func main() {
 
 	fmt.Println("\n提交成功！")
 
-	// 等待退出
-	time.Sleep(3 * time.Second)
-	fmt.Println("按任意键退出...")
+	// 等待用户输入
+	fmt.Println("按任意键返回课程列表，按0退出...")
 
 	// 使用 bufio 读取用户输入
 	reader := bufio.NewReader(os.Stdin)
-	_, _ = reader.ReadByte()
+	input, _ := reader.ReadByte()
+	if input == '0' {
+		return
+	} else {
+		// 清屏
+		clearScreen()
+		main()
+	}
 }

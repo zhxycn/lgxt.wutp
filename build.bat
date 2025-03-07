@@ -2,7 +2,7 @@
 CHCP 65001 && CLS
 setlocal enabledelayedexpansion
 
-set VERSION=1.0.1
+set VERSION=1.0.2
 
 if not exist "build" mkdir build
 
