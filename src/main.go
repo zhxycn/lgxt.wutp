@@ -338,12 +338,22 @@ func saveConfig(account, password string) error {
 	return nil
 }
 
+// logout 退出登录，清空配置文件中的账号密码
+func logout() error {
+	// 清空账号密码
+	err := saveConfig("", "")
+	if err != nil {
+		return fmt.Errorf("退出登录失败: %v", err)
+	}
+	return nil
+}
+
 func main() {
 	var account, password string
 
 	// 尝试从配置文件加载账号密码
 	config, err := loadConfig()
-	if err == nil {
+	if err == nil && config.Account != "" && config.Password != "" {
 		// 配置文件存在且解析成功
 		account = config.Account
 		password = config.Password
@@ -374,6 +384,13 @@ func main() {
 	err = client.login(account, password)
 	if err != nil {
 		fmt.Printf("登录失败: %v\n", err)
+		fmt.Println("请重新登录")
+		err = logout()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		}
+		// 重新启动程序
+		main()
 		return
 	}
 
@@ -399,11 +416,26 @@ func main() {
 	}
 
 	// 选择课程
+	fmt.Println("\n退出登录 [0]")
 	fmt.Print("\n请输入课程ID: ")
+
 	var selectedCourseID int
 	_, err = fmt.Scanln(&selectedCourseID)
 	if err != nil {
 		fmt.Printf("输入错误: %v\n", err)
+		return
+	}
+
+	// 输入0退出登录
+	if selectedCourseID == 0 {
+		err = logout()
+		if err != nil {
+			fmt.Printf("%v\n", err)
+		}
+		// 重新启动程序
+		fmt.Println("已退出登录")
+		clearScreen()
+		main()
 		return
 	}
 
