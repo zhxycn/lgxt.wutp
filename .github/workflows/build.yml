@@ -9,14 +9,34 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        goos: [windows, linux, darwin]
-        goarch: [amd64, arm64]
         include:
+          # Windows builds
           - goos: windows
+            goarch: amd64
             ext: .exe
+          - goos: windows
+            goarch: arm64
+            ext: .exe
+
+          # Linux builds
           - goos: linux
+            goarch: amd64
+            ext: ""
+          - goos: linux
+            goarch: arm64
+            ext: ""
+          - goos: linux
+            goarch: arm
+            goarm: 7
+            ext: ""
+            suffix: v7
+
+          # macOS builds
+          - goos: darwin
+            goarch: amd64
             ext: ""
           - goos: darwin
+            goarch: arm64
             ext: ""
 
     steps:
@@ -37,13 +57,26 @@ jobs:
           export GOOS=${{ matrix.goos }}
           export GOARCH=${{ matrix.goarch }}
           export CGO_ENABLED=0
-          go build -ldflags="-s -w" -o lgxt_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }} src/main.go
+          
+          # Set GOARM for ARM v7 builds
+          if [ "${{ matrix.goarm }}" != "" ]; then
+            export GOARM=${{ matrix.goarm }}
+          fi
+          
+          # Define output filename with suffix if specified
+          if [ "${{ matrix.suffix }}" != "" ]; then
+            OUTPUT_NAME=lgxt_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.suffix }}${{ matrix.ext }}
+          else
+            OUTPUT_NAME=lgxt_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
+          fi
+          
+          go build -ldflags="-s -w" -o $OUTPUT_NAME src/main.go
 
       - name: Upload binaries to release
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
-          file: lgxt_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
-          asset_name: lgxt_${{ env.VERSION }}_${{ matrix.goos }}_${{ matrix.goarch }}${{ matrix.ext }}
+          file: ${{ matrix.suffix != '' && format('lgxt_{0}_{1}_{2}{3}{4}', env.VERSION, matrix.goos, matrix.goarch, matrix.suffix, matrix.ext) || format('lgxt_{0}_{1}_{2}{3}', env.VERSION, matrix.goos, matrix.goarch, matrix.ext) }}
+          asset_name: ${{ matrix.suffix != '' && format('lgxt_{0}_{1}_{2}{3}{4}', env.VERSION, matrix.goos, matrix.goarch, matrix.suffix, matrix.ext) || format('lgxt_{0}_{1}_{2}{3}', env.VERSION, matrix.goos, matrix.goarch, matrix.ext) }}
           tag: ${{ github.ref }}
           overwrite: true
