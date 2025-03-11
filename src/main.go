@@ -431,7 +431,7 @@ func main() {
 	}
 
 	// 输入0返回课程列表
-	if selectedWorkID == -1 {
+	if selectedWorkID == 0 {
 		// 清屏
 		clearScreen()
 		main()
