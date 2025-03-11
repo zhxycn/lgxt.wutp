@@ -12,6 +12,7 @@ import (
 	"os/exec"
 	"runtime"
 	"strconv"
+	"time"
 )
 
 // API 端点
@@ -375,6 +376,9 @@ func main() {
 		} else {
 			fmt.Println("账号信息已保存到配置文件")
 		}
+
+		// 延迟1秒
+		time.Sleep(1 * time.Second)
 	}
 
 	// 创建客户端
@@ -389,6 +393,10 @@ func main() {
 		if err != nil {
 			fmt.Printf("%v\n", err)
 		}
+
+		// 延迟2秒
+		time.Sleep(2 * time.Second)
+
 		// 重新启动程序
 		main()
 		return
@@ -416,7 +424,8 @@ func main() {
 	}
 
 	// 选择课程
-	fmt.Println("\n退出登录 [0]")
+	fmt.Println("\n自动提交所有课程的所有作业 [-1]")
+	fmt.Println("退出登录 [0]")
 	fmt.Print("\n请输入课程ID: ")
 
 	var selectedCourseID int
@@ -434,8 +443,59 @@ func main() {
 		}
 		// 重新启动程序
 		fmt.Println("已退出登录")
+
+		// 延迟2秒
+		time.Sleep(2 * time.Second)
+
 		clearScreen()
 		main()
+		return
+	}
+
+	// 输入-1循环所有课程和作业
+	if selectedCourseID == -1 {
+		fmt.Println("\n开始自动提交所有课程的所有作业...")
+		fmt.Println("每次提交间隔60秒...")
+
+		for _, course := range courses {
+			fmt.Printf("\n正在处理课程: %s [%d]\n", course.CourseName, course.CourseID)
+
+			// 获取课程作业
+			works, err := client.getCourseWorks(course.CourseID)
+			if err != nil {
+				fmt.Printf("获取课程 [%d] 作业失败: %v\n", course.CourseID, err)
+				continue
+			}
+
+			// 提交该课程的所有作业
+			for _, work := range works {
+				fmt.Printf("  提交作业: %s [%d]...", work.WorkName, work.WorkID)
+				err = client.submitAnswer(work.WorkID, 100)
+				if err != nil {
+					fmt.Printf("失败: %v\n", err)
+				} else {
+					fmt.Printf("成功!\n")
+				}
+
+				// 延迟60秒
+				time.Sleep(60 * time.Second)
+			}
+			fmt.Println()
+		}
+
+		fmt.Println("\n所有作业提交完成!")
+		fmt.Println("按任意键返回课程列表，按0退出...")
+
+		// 使用 bufio 读取用户输入
+		reader := bufio.NewReader(os.Stdin)
+		input, _ := reader.ReadByte()
+		if input == '0' {
+			return
+		} else {
+			// 清屏
+			clearScreen()
+			main()
+		}
 		return
 	}
 
