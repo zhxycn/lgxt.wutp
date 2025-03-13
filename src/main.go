@@ -45,8 +45,9 @@ type CourseWork struct {
 
 // Config 配置文件数据
 type Config struct {
-	Account  string `json:"account"`
-	Password string `json:"password"`
+	Account   string `json:"account"`
+	Password  string `json:"password"`
+	SleepTime int    `json:"sleeptime"`
 }
 
 // Client API客户端
@@ -317,12 +318,37 @@ func loadConfig() (Config, error) {
 	return config, nil
 }
 
-// saveConfig 保存账号密码到配置文件
-func saveConfig(account, password string) error {
-	config := Config{
-		Account:  account,
-		Password: password,
+// saveAccountConfig 保存账号密码到配置文件
+func saveAccountConfig(account, password string) error {
+	config, err := loadConfig()
+	if err != nil {
+		config = Config{}
 	}
+	config.Account = account
+	config.Password = password
+
+	// 转换为 JSON
+	configJSON, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("生成配置文件失败: %v", err)
+	}
+
+	// 写入文件
+	err = os.WriteFile("config.json", configJSON, 0600)
+	if err != nil {
+		return fmt.Errorf("写入配置文件失败: %v", err)
+	}
+
+	return nil
+}
+
+// saveSleepConfig 保存延迟设定到配置文件
+func saveSleepConfig(sleepTime int) error {
+	config, err := loadConfig()
+	if err != nil {
+		config = Config{}
+	}
+	config.SleepTime = sleepTime
 
 	// 转换为 JSON
 	configJSON, err := json.MarshalIndent(config, "", "  ")
@@ -342,7 +368,7 @@ func saveConfig(account, password string) error {
 // logout 退出登录，清空配置文件中的账号密码
 func logout() error {
 	// 清空账号密码
-	err := saveConfig("", "")
+	err := saveAccountConfig("", "")
 	if err != nil {
 		return fmt.Errorf("退出登录失败: %v", err)
 	}
@@ -370,7 +396,7 @@ func main() {
 		clearScreen()
 
 		// 保存账号密码到配置文件
-		err = saveConfig(account, password)
+		err = saveAccountConfig(account, password)
 		if err != nil {
 			fmt.Printf("保存配置文件失败: %v\n", err)
 		} else {
@@ -455,7 +481,34 @@ func main() {
 	// 输入-1循环所有课程和作业
 	if selectedCourseID == -1 {
 		fmt.Println("\n开始自动提交所有课程的所有作业...")
-		fmt.Println("每次提交间隔60秒...")
+
+		// 尝试从配置文件加载延迟时间
+		var sleepTime int
+		config, err := loadConfig()
+		if err == nil && config.SleepTime != 0 {
+			// 配置文件存在且解析成功
+			sleepTime = config.SleepTime
+		} else {
+			// 配置文件不存在或解析失败，需要用户输入
+			fmt.Print("请设置两次自动提交的延迟(秒，默认60): ")
+			_, err := fmt.Scanln(&sleepTime)
+			if err != nil {
+				sleepTime = 60
+			}
+
+			// 保存延迟设定到配置文件
+			err = saveSleepConfig(sleepTime)
+			if err != nil {
+				fmt.Printf("保存配置文件失败: %v\n", err)
+			} else {
+				fmt.Println("延迟设定已保存到配置文件")
+			}
+
+			// 延迟1秒
+			time.Sleep(1 * time.Second)
+		}
+
+		fmt.Printf("每次提交间隔 %d 秒...", sleepTime)
 
 		for _, course := range courses {
 			fmt.Printf("\n正在处理课程: %s [%d]\n", course.CourseName, course.CourseID)
@@ -477,8 +530,8 @@ func main() {
 					fmt.Printf("成功!\n")
 				}
 
-				// 延迟60秒
-				time.Sleep(60 * time.Second)
+				// 休息一会
+				time.Sleep(time.Duration(sleepTime) * time.Second)
 			}
 			fmt.Println()
 		}
